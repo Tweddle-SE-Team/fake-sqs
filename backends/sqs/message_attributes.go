@@ -1,4 +1,4 @@
-package gosqs
+package sqs
 
 import (
 	"fmt"
@@ -22,12 +22,12 @@ type MessageAttributeValue struct {
 func extractMessageAttributes(req *http.Request) map[string]MessageAttributeValue {
 	attributes := make(map[string]MessageAttributeValue)
 
-	for i := 1; true; i++ {		
+	for i := 1; true; i++ {
 		name := req.FormValue(fmt.Sprintf("MessageAttribute.%d.Name", i))
 		if name == "" {
 			break
 		}
-		
+
 		dataType := req.FormValue(fmt.Sprintf("MessageAttribute.%d.Value.DataType", i))
 		if dataType == "" {
 			log.Warnf("DataType of MessageAttribute %s is missing, MD5 checksum will most probably be wrong!\n", name)

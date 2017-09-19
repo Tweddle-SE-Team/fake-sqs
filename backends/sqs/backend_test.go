@@ -1,4 +1,4 @@
-package gosqs
+package sqs
 
 import (
 	"net/http"

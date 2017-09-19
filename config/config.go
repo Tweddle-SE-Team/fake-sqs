@@ -6,10 +6,10 @@ import (
 
    log "github.com/sirupsen/logrus"
 
-   yaml "github.com/ghodss/yaml"
-   common "github.com/Tweddle-SE-Team/goaws/backends/common"
-   sns "github.com/Tweddle-SE-Team/goaws/backends/gosns"
-   sqs "github.com/Tweddle-SE-Team/goaws/backends/gosqs"
+   "github.com/ghodss/yaml"
+   "github.com/Tweddle-SE-Team/goaws/backends/common"
+   "github.com/Tweddle-SE-Team/goaws/backends/sns"
+   "github.com/Tweddle-SE-Team/goaws/backends/sqs"
 )
 
 type EnvSubsciption struct {

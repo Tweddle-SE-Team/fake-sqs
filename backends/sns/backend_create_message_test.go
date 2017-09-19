@@ -1,4 +1,4 @@
-package gosns
+package sns
 
 import (
 	"encoding/json"

@@ -1,4 +1,4 @@
-package gosqs
+package sqs
 
 import (
 	"encoding/xml"
@@ -13,7 +13,6 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/gorilla/mux"
-	"github.com/Tweddle-SE-Team/goaws/backends"
 	"github.com/Tweddle-SE-Team/goaws/backends/common"
 )
 
@@ -66,9 +65,9 @@ func init() {
 
 func ListQueues(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/xml")
-	respStruct := backends.ListQueuesResponse{}
+	respStruct := ListQueuesResponse{}
 	respStruct.Xmlns = "http://queue.amazonaws.com/doc/2012-11-05/"
-	respStruct.Metadata = backends.ResponseMetadata{RequestId: "00000000-0000-0000-0000-000000000000"}
+	respStruct.Metadata = common.ResponseMetadata{RequestId: "00000000-0000-0000-0000-000000000000"}
 	respStruct.Result.QueueUrl = make([]string, 0)
 
 	log.Println("Listing Queues")
@@ -97,7 +96,7 @@ func CreateQueue(w http.ResponseWriter, req *http.Request) {
 		SyncQueues.RUnlock()
 	}
 
-	respStruct := backends.CreateQueueResponse{"http://queue.amazonaws.com/doc/2012-11-05/", backends.CreateQueueResult{QueueUrl: queueUrl}, backends.ResponseMetadata{RequestId: "00000000-0000-0000-0000-000000000000"}}
+	respStruct := CreateQueueResponse{"http://queue.amazonaws.com/doc/2012-11-05/", CreateQueueResult{QueueUrl: queueUrl}, common.ResponseMetadata{RequestId: "00000000-0000-0000-0000-000000000000"}}
 	enc := xml.NewEncoder(w)
 	enc.Indent("  ", "    ")
 	if err := enc.Encode(respStruct); err != nil {
@@ -137,7 +136,7 @@ func SendMessage(w http.ResponseWriter, req *http.Request) {
 	SyncQueues.Unlock()
 	common.LogMessage(fmt.Sprintf("%s: Queue: %s, Message: %s\n", time.Now().Format("2006-01-02 15:04:05"), queueName, msg.MessageBody))
 
-	respStruct := backends.SendMessageResponse{"http://queue.amazonaws.com/doc/2012-11-05/", backends.SendMessageResult{MD5OfMessageAttributes: msg.MD5OfMessageAttributes, MD5OfMessageBody: msg.MD5OfMessageBody, MessageId: msg.Uuid}, backends.ResponseMetadata{RequestId: "00000000-0000-0000-0000-000000000000"}}
+	respStruct := SendMessageResponse{"http://queue.amazonaws.com/doc/2012-11-05/", SendMessageResult{MD5OfMessageAttributes: msg.MD5OfMessageAttributes, MD5OfMessageBody: msg.MD5OfMessageBody, MessageId: msg.Uuid}, common.ResponseMetadata{RequestId: "00000000-0000-0000-0000-000000000000"}}
 	enc := xml.NewEncoder(w)
 	enc.Indent("  ", "    ")
 	if err := enc.Encode(respStruct); err != nil {
@@ -175,9 +174,9 @@ func ReceiveMessage(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var message []*backends.ResultMessage
+	var message []*ResultMessage
 	//	respMsg := ResultMessage{}
-	respStruct := backends.ReceiveMessageResponse{}
+	respStruct := ReceiveMessageResponse{}
 
 	loops := waitTimeSeconds * 10
 	for len(SyncQueues.Queues[queueName].Messages)-numberOfHiddenMessagesInQueue(*SyncQueues.Queues[queueName]) == 0 && loops > 0 {
@@ -188,7 +187,7 @@ func ReceiveMessage(w http.ResponseWriter, req *http.Request) {
 
 	if len(SyncQueues.Queues[queueName].Messages) > 0 {
 		numMsg := 0
-		message = make([]*backends.ResultMessage, 0)
+		message = make([]*ResultMessage, 0)
 		for i := range SyncQueues.Queues[queueName].Messages {
 			if numMsg >= maxNumberOfMessages {
 				break
@@ -201,7 +200,7 @@ func ReceiveMessage(w http.ResponseWriter, req *http.Request) {
 				uuid, _ := common.NewUUID()
 				SyncQueues.Queues[queueName].Messages[i].ReceiptHandle = SyncQueues.Queues[queueName].Messages[i].Uuid + "#" + uuid
 				SyncQueues.Queues[queueName].Messages[i].ReceiptTime = time.Now()
-				message = append(message, &backends.ResultMessage{})
+				message = append(message, &ResultMessage{})
 				message[numMsg].MessageId = SyncQueues.Queues[queueName].Messages[i].Uuid
 				message[numMsg].Body = SyncQueues.Queues[queueName].Messages[i].MessageBody
 				message[numMsg].ReceiptHandle = SyncQueues.Queues[queueName].Messages[i].ReceiptHandle
@@ -212,10 +211,10 @@ func ReceiveMessage(w http.ResponseWriter, req *http.Request) {
 		}
 
 		//		respMsg = ResultMessage{MessageId: message.Uuid, ReceiptHandle: message.ReceiptHandle, MD5OfBody: message.MD5OfMessageBody, Body: message.MessageBody, MD5OfMessageAttributes: message.MD5OfMessageAttributes}
-		respStruct = backends.ReceiveMessageResponse{"http://queue.amazonaws.com/doc/2012-11-05/", backends.ReceiveMessageResult{Message: message}, backends.ResponseMetadata{RequestId: "00000000-0000-0000-0000-000000000000"}}
+		respStruct = ReceiveMessageResponse{"http://queue.amazonaws.com/doc/2012-11-05/", ReceiveMessageResult{Message: message}, common.ResponseMetadata{RequestId: "00000000-0000-0000-0000-000000000000"}}
 	} else {
 		log.Println("No messages in Queue:", queueName)
-		respStruct = backends.ReceiveMessageResponse{Xmlns: "http://queue.amazonaws.com/doc/2012-11-05/", Result: backends.ReceiveMessageResult{}, Metadata: backends.ResponseMetadata{RequestId: "00000000-0000-0000-0000-000000000000"}}
+		respStruct = ReceiveMessageResponse{Xmlns: "http://queue.amazonaws.com/doc/2012-11-05/", Result: ReceiveMessageResult{}, Metadata: common.ResponseMetadata{RequestId: "00000000-0000-0000-0000-000000000000"}}
 	}
 	enc := xml.NewEncoder(w)
 	enc.Indent("  ", "    ")
@@ -284,7 +283,7 @@ func DeleteMessageBatch(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	deletedEntries := make([]backends.DeleteMessageBatchResultEntry, 0)
+	deletedEntries := make([]DeleteMessageBatchResultEntry, 0)
 
 	SyncQueues.Lock()
 	if _, ok := SyncQueues.Queues[queueName]; ok {
@@ -294,7 +293,7 @@ func DeleteMessageBatch(w http.ResponseWriter, req *http.Request) {
 					SyncQueues.Queues[queueName].Messages = append(SyncQueues.Queues[queueName].Messages[:i], SyncQueues.Queues[queueName].Messages[i+1:]...)
 
 					deleteEntry.Deleted = true
-					deletedEntry := backends.DeleteMessageBatchResultEntry{Id: deleteEntry.Id}
+					deletedEntry := DeleteMessageBatchResultEntry{Id: deleteEntry.Id}
 					deletedEntries = append(deletedEntries, deletedEntry)
 				}
 			}
@@ -302,10 +301,10 @@ func DeleteMessageBatch(w http.ResponseWriter, req *http.Request) {
 	}
 	SyncQueues.Unlock()
 
-	notFoundEntries := make([]backends.BatchResultErrorEntry, 0)
+	notFoundEntries := make([]BatchResultErrorEntry, 0)
 	for _, deleteEntry := range deleteEntries {
 		if deleteEntry.Deleted == false {
-			notFoundEntries = append(notFoundEntries, backends.BatchResultErrorEntry{
+			notFoundEntries = append(notFoundEntries, BatchResultErrorEntry{
 				Code: "1",
 				Id: deleteEntry.Id,
 				Message: "Message not found",
@@ -313,10 +312,10 @@ func DeleteMessageBatch(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	respStruct := backends.DeleteMessageBatchResponse{
+	respStruct := DeleteMessageBatchResponse{
 		"http://queue.amazonaws.com/doc/2012-11-05/",
-		backends.DeleteMessageBatchResult{Entry: deletedEntries, Error: notFoundEntries},
-		backends.ResponseMetadata{RequestId: "00000000-0000-0000-0000-000000000001"}}
+		DeleteMessageBatchResult{Entry: deletedEntries, Error: notFoundEntries},
+		common.ResponseMetadata{RequestId: "00000000-0000-0000-0000-000000000001"}}
 
 	enc := xml.NewEncoder(w)
 	enc.Indent(" ", "    ")
@@ -355,7 +354,7 @@ func DeleteMessage(w http.ResponseWriter, req *http.Request) {
 
 				SyncQueues.Unlock()
 				// Create, encode/xml and send response
-				respStruct := backends.DeleteMessageResponse{"http://queue.amazonaws.com/doc/2012-11-05/", backends.ResponseMetadata{RequestId: "00000000-0000-0000-0000-000000000001"}}
+				respStruct := DeleteMessageResponse{"http://queue.amazonaws.com/doc/2012-11-05/", common.ResponseMetadata{RequestId: "00000000-0000-0000-0000-000000000001"}}
 				enc := xml.NewEncoder(w)
 				enc.Indent("  ", "    ")
 				if err := enc.Encode(respStruct); err != nil {
@@ -394,7 +393,7 @@ func DeleteQueue(w http.ResponseWriter, req *http.Request) {
 	SyncQueues.Unlock()
 
 	// Create, encode/xml and send response
-	respStruct := backends.DeleteMessageResponse{"http://queue.amazonaws.com/doc/2012-11-05/", backends.ResponseMetadata{RequestId: "00000000-0000-0000-0000-000000000000"}}
+	respStruct := DeleteMessageResponse{"http://queue.amazonaws.com/doc/2012-11-05/", common.ResponseMetadata{RequestId: "00000000-0000-0000-0000-000000000000"}}
 	enc := xml.NewEncoder(w)
 	enc.Indent("  ", "    ")
 	if err := enc.Encode(respStruct); err != nil {
@@ -417,7 +416,7 @@ func PurgeQueue(w http.ResponseWriter, req *http.Request) {
 	SyncQueues.Lock()
 	if _, ok := SyncQueues.Queues[queueName]; ok {
 		SyncQueues.Queues[queueName].Messages = nil
-		respStruct := backends.PurgeQueueResponse{"http://queue.amazonaws.com/doc/2012-11-05/", backends.ResponseMetadata{RequestId: "00000000-0000-0000-0000-000000000000"}}
+		respStruct := PurgeQueueResponse{"http://queue.amazonaws.com/doc/2012-11-05/", common.ResponseMetadata{RequestId: "00000000-0000-0000-0000-000000000000"}}
 		enc := xml.NewEncoder(w)
 		enc.Indent("  ", "    ")
 		if err := enc.Encode(respStruct); err != nil {
@@ -442,8 +441,8 @@ func GetQueueUrl(w http.ResponseWriter, req *http.Request) {
 		url := queue.URL
 		log.Println("Get Queue URL:", queueName)
 		// Create, encode/xml and send response
-		result := backends.GetQueueUrlResult{QueueUrl: url}
-		respStruct := backends.GetQueueUrlResponse{"http://queue.amazonaws.com/doc/2012-11-05/", result, backends.ResponseMetadata{RequestId: "00000000-0000-0000-0000-000000000000"}}
+		result := GetQueueUrlResult{QueueUrl: url}
+		respStruct := GetQueueUrlResponse{"http://queue.amazonaws.com/doc/2012-11-05/", result, common.ResponseMetadata{RequestId: "00000000-0000-0000-0000-000000000000"}}
 		enc := xml.NewEncoder(w)
 		enc.Indent("  ", "    ")
 		if err := enc.Encode(respStruct); err != nil {
@@ -475,27 +474,27 @@ func GetQueueAttributes(w http.ResponseWriter, req *http.Request) {
 	if queue, ok := SyncQueues.Queues[queueName]; ok {
 		SyncQueues.RLock()
 		// Create, encode/xml and send response
-		attribs := make([]backends.Attribute, 0, 0)
-		attr := backends.Attribute{Name: "VisibilityTimeout", Value: strconv.Itoa(queue.TimeoutSecs)}
+		attribs := make([]Attribute, 0, 0)
+		attr := Attribute{Name: "VisibilityTimeout", Value: strconv.Itoa(queue.TimeoutSecs)}
 		attribs = append(attribs, attr)
-		attr = backends.Attribute{Name: "DelaySeconds", Value: "0"}
+		attr = Attribute{Name: "DelaySeconds", Value: "0"}
 		attribs = append(attribs, attr)
-		attr = backends.Attribute{Name: "ReceiveMessageWaitTimeSeconds", Value: "0"}
+		attr = Attribute{Name: "ReceiveMessageWaitTimeSeconds", Value: "0"}
 		attribs = append(attribs, attr)
-		attr = backends.Attribute{Name: "ApproximateNumberOfMessages", Value: strconv.Itoa(len(queue.Messages))}
+		attr = Attribute{Name: "ApproximateNumberOfMessages", Value: strconv.Itoa(len(queue.Messages))}
 		attribs = append(attribs, attr)
-		attr = backends.Attribute{Name: "ApproximateNumberOfMessagesNotVisible", Value: strconv.Itoa(numberOfHiddenMessagesInQueue(*queue))}
+		attr = Attribute{Name: "ApproximateNumberOfMessagesNotVisible", Value: strconv.Itoa(numberOfHiddenMessagesInQueue(*queue))}
 		attribs = append(attribs, attr)
-		attr = backends.Attribute{Name: "CreatedTimestamp", Value: "0000000000"}
+		attr = Attribute{Name: "CreatedTimestamp", Value: "0000000000"}
 		attribs = append(attribs, attr)
-		attr = backends.Attribute{Name: "LastModifiedTimestamp", Value: "0000000000"}
+		attr = Attribute{Name: "LastModifiedTimestamp", Value: "0000000000"}
 		attribs = append(attribs, attr)
-		attr = backends.Attribute{Name: "QueueArn", Value: queue.Arn}
+		attr = Attribute{Name: "QueueArn", Value: queue.Arn}
 		attribs = append(attribs, attr)
 		SyncQueues.RUnlock()
 
-		result := backends.GetQueueAttributesResult{Attrs: attribs}
-		respStruct := backends.GetQueueAttributesResponse{"http://queue.amazonaws.com/doc/2012-11-05/", result, backends.ResponseMetadata{RequestId: "00000000-0000-0000-0000-000000000000"}}
+		result := GetQueueAttributesResult{Attrs: attribs}
+		respStruct := GetQueueAttributesResponse{"http://queue.amazonaws.com/doc/2012-11-05/", result, common.ResponseMetadata{RequestId: "00000000-0000-0000-0000-000000000000"}}
 		enc := xml.NewEncoder(w)
 		enc.Indent("  ", "    ")
 		if err := enc.Encode(respStruct); err != nil {
@@ -509,7 +508,7 @@ func GetQueueAttributes(w http.ResponseWriter, req *http.Request) {
 
 func SetQueueAttributes(w http.ResponseWriter, req *http.Request) {
 	log.Println("setQueueAttributes was called but it's not implemented")
-	respStruct := backends.SetQueueAttributesResponse{"http://queue.amazonaws.com/doc/2012-11-05/", backends.ResponseMetadata{RequestId: "00000000-0000-0000-0000-000000000000"}}
+	respStruct := SetQueueAttributesResponse{"http://queue.amazonaws.com/doc/2012-11-05/", common.ResponseMetadata{RequestId: "00000000-0000-0000-0000-000000000000"}}
 	enc := xml.NewEncoder(w)
 	enc.Indent("  ", "    ")
 	if err := enc.Encode(respStruct); err != nil {
@@ -531,7 +530,7 @@ func getQueueFromPath(formVal string, theUrl string) string {
 
 func createErrorResponse(w http.ResponseWriter, req *http.Request, err string) {
 	er := SqsErrors[err]
-	respStruct := backends.ErrorResponse{backends.ErrorResult{Type: er.Type, Code: er.Code, Message: er.Message, RequestId: "00000000-0000-0000-0000-000000000000"}}
+	respStruct := common.ErrorResponse{common.ErrorResult{Type: er.Type, Code: er.Code, Message: er.Message, RequestId: "00000000-0000-0000-0000-000000000000"}}
 
 	w.WriteHeader(er.HttpError)
 	enc := xml.NewEncoder(w)
