@@ -32,7 +32,12 @@ func extractMessageAttributes(req *http.Request) map[string]MessageAttribute {
 		for _, valueKey := range [...]string{"StringValue", "BinaryValue"} {
 			value := req.FormValue(fmt.Sprintf("MessageAttribute.%d.Value.%s", i, valueKey))
 			if value != "" {
-				messageAttributeValue := MessageAttributeValue{StringValue: valueKey, DataType: dataType}
+				messageAttributeValue := MessageAttributeValue{DataType: dataType}
+				if valueKey == "StringValue" {
+					messageAttributeValue.StringValue = value
+				} else if valueKey == "BinaryValue" {
+					messageAttributeValue.BinaryValue = value
+				}
 				attributes[name] = MessageAttribute{Name: name, Value: messageAttributeValue}
 			}
 		}
@@ -51,7 +56,6 @@ func hashAttributes(attributes map[string]MessageAttribute) string {
 	keys := sortedKeys(attributes)
 	for _, key := range keys {
 		attributeValue := attributes[key]
-
 		addStringToHash(hasher, key)
 		addStringToHash(hasher, attributeValue.Value.DataType)
 		if attributeValue.Value.StringValue != "" {

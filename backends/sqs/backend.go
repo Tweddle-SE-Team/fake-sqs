@@ -213,7 +213,6 @@ func ReceiveMessage(w http.ResponseWriter, req *http.Request) {
 				message[numMsg].Body = SyncQueues.Queues[queueName].Messages[i].MessageBody
 				message[numMsg].ReceiptHandle = SyncQueues.Queues[queueName].Messages[i].ReceiptHandle
 				message[numMsg].MD5OfBody = common.GetMD5Hash(string(message[numMsg].Body))
-				log.Printf("message: %+v", message[numMsg])
 				SyncQueues.Unlock() // Unlock the Queues
 				numMsg++
 			}
