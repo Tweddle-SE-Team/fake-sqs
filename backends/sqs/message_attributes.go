@@ -13,14 +13,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type MessageAttributeValue struct {
-	dataType string
-	value    string
-	valueKey string
-}
-
-func extractMessageAttributes(req *http.Request) map[string]MessageAttributeValue {
-	attributes := make(map[string]MessageAttributeValue)
+func extractMessageAttributes(req *http.Request) map[string]MessageAttribute {
+	attributes := make(map[string]MessageAttribute)
 
 	for i := 1; true; i++ {
 		name := req.FormValue(fmt.Sprintf("MessageAttribute.%d.Name", i))
@@ -38,7 +32,8 @@ func extractMessageAttributes(req *http.Request) map[string]MessageAttributeValu
 		for _, valueKey := range [...]string{"StringValue", "BinaryValue"} {
 			value := req.FormValue(fmt.Sprintf("MessageAttribute.%d.Value.%s", i, valueKey))
 			if value != "" {
-				attributes[name] = MessageAttributeValue{dataType, value, valueKey}
+				messageAttributeValue := MessageAttributeValue{StringValue: valueKey, DataType: dataType}
+				attributes[name] = MessageAttribute{Name: name, Value: messageAttributeValue}
 			}
 		}
 
@@ -50,7 +45,7 @@ func extractMessageAttributes(req *http.Request) map[string]MessageAttributeValu
 	return attributes
 }
 
-func hashAttributes(attributes map[string]MessageAttributeValue) string {
+func hashAttributes(attributes map[string]MessageAttribute) string {
 	hasher := md5.New()
 
 	keys := sortedKeys(attributes)
@@ -58,13 +53,13 @@ func hashAttributes(attributes map[string]MessageAttributeValue) string {
 		attributeValue := attributes[key]
 
 		addStringToHash(hasher, key)
-		addStringToHash(hasher, attributeValue.dataType)
-		if attributeValue.valueKey == "StringValue" {
+		addStringToHash(hasher, attributeValue.Value.DataType)
+		if attributeValue.Value.StringValue != "" {
 			hasher.Write([]byte{1})
-			addStringToHash(hasher, attributeValue.value)
-		} else if attributeValue.valueKey == "BinaryValue" {
+			addStringToHash(hasher, attributeValue.Value.StringValue)
+		} else if attributeValue.Value.BinaryValue != "" {
 			hasher.Write([]byte{2})
-			bytes, _ := base64.StdEncoding.DecodeString(attributeValue.value)
+			bytes, _ := base64.StdEncoding.DecodeString(attributeValue.Value.BinaryValue)
 			addBytesToHash(hasher, bytes)
 		}
 	}
@@ -72,7 +67,7 @@ func hashAttributes(attributes map[string]MessageAttributeValue) string {
 	return hex.EncodeToString(hasher.Sum(nil))
 }
 
-func sortedKeys(attributes map[string]MessageAttributeValue) []string {
+func sortedKeys(attributes map[string]MessageAttribute) []string {
 	var keys []string
 	for key, _ := range attributes {
 		keys = append(keys, key)

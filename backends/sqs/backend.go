@@ -27,7 +27,7 @@ var SqsErrors map[string]SqsErrorType
 
 type Message struct {
 	MessageBody            []byte
-	MessageAttributes      []byte
+	MessageAttributes      []MessageAttribute
 	Uuid                   string
 	MD5OfMessageAttributes string
 	MD5OfMessageBody       string
@@ -109,6 +109,7 @@ func SendMessage(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/xml")
 	messageBody := req.FormValue("MessageBody")
 	messageAttributes := extractMessageAttributes(req)
+	log.Printf("message attributes %v", messageAttributes)
 
 	queueUrl := getQueueFromPath(req.FormValue("QueueUrl"), req.URL.String())
 
@@ -128,9 +129,13 @@ func SendMessage(w http.ResponseWriter, req *http.Request) {
 	}
 
 	log.Println("Putting Message in Queue:", queueName)
-	msg := Message{MessageBody: []byte(messageBody)}
-	msg.MD5OfMessageAttributes = hashAttributes(messageAttributes)
+	var messageAttrs []MessageAttribute
+	for k := range messageAttributes {
+		messageAttrs = append(messageAttrs, messageAttributes[k])
+	}
+	msg := Message{MessageBody: []byte(messageBody), MessageAttributes: messageAttrs}
 	msg.MD5OfMessageBody = common.GetMD5Hash(messageBody)
+	msg.MD5OfMessageAttributes = hashAttributes(messageAttributes)
 	msg.Uuid, _ = common.NewUUID()
 	SyncQueues.Lock()
 	SyncQueues.Queues[queueName].Messages = append(SyncQueues.Queues[queueName].Messages, msg)
@@ -176,7 +181,6 @@ func ReceiveMessage(w http.ResponseWriter, req *http.Request) {
 	}
 
 	var message []*ResultMessage
-	//	respMsg := ResultMessage{}
 	respStruct := ReceiveMessageResponse{}
 
 	loops := waitTimeSeconds * 10
@@ -203,15 +207,18 @@ func ReceiveMessage(w http.ResponseWriter, req *http.Request) {
 				SyncQueues.Queues[queueName].Messages[i].ReceiptTime = time.Now()
 				message = append(message, &ResultMessage{})
 				message[numMsg].MessageId = SyncQueues.Queues[queueName].Messages[i].Uuid
+				for k := range SyncQueues.Queues[queueName].Messages[i].MessageAttributes {
+					message[numMsg].MessageAttributes = append(message[numMsg].MessageAttributes, SyncQueues.Queues[queueName].Messages[i].MessageAttributes[k])
+				}
 				message[numMsg].Body = SyncQueues.Queues[queueName].Messages[i].MessageBody
 				message[numMsg].ReceiptHandle = SyncQueues.Queues[queueName].Messages[i].ReceiptHandle
 				message[numMsg].MD5OfBody = common.GetMD5Hash(string(message[numMsg].Body))
+				log.Printf("message: %+v", message[numMsg])
 				SyncQueues.Unlock() // Unlock the Queues
 				numMsg++
 			}
 		}
 
-		//		respMsg = ResultMessage{MessageId: message.Uuid, ReceiptHandle: message.ReceiptHandle, MD5OfBody: message.MD5OfMessageBody, Body: message.MessageBody, MD5OfMessageAttributes: message.MD5OfMessageAttributes}
 		respStruct = ReceiveMessageResponse{"http://queue.amazonaws.com/doc/2012-11-05/", ReceiveMessageResult{Message: message}, common.ResponseMetadata{RequestId: "00000000-0000-0000-0000-000000000000"}}
 	} else {
 		log.Println("No messages in Queue:", queueName)
