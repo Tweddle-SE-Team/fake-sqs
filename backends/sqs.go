@@ -1,4 +1,4 @@
-package app
+package backends
 
 /*** List Queues Response */
 type ListQueuesResult struct {

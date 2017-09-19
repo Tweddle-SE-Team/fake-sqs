@@ -1,14 +1,16 @@
 FROM golang:alpine
 
 RUN apk --no-cache add git
-RUN go get github.com/Tweddle-SE-Team/goaws/...
 
-COPY app /opt/app
-WORKDIR /opt/app
-RUN go build -o goaws /opt/app/cmd/goaws.go
+ENV GOPATH=/opt
 
-COPY app/conf/goaws.yaml /conf/
+COPY . $GOPATH/src/github.com/Tweddle-SE-Team/goaws
+WORKDIR $GOPATH/src/github.com/Tweddle-SE-Team/goaws
+
+RUN go get ./... && go build -o /usr/bin/goaws .
+
+COPY config/config.yaml /etc/goaws/
 
 EXPOSE 4100
 
-ENTRYPOINT ["/opt/app/goaws"]
+ENTRYPOINT ["/usr/bin/goaws"]

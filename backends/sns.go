@@ -1,4 +1,4 @@
-package app
+package backends
 
 /*** List Topics Response */
 type TopicArnResult struct {

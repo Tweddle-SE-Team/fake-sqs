@@ -12,9 +12,9 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/p4tin/goaws/app"
-	"github.com/p4tin/goaws/app/common"
-	sqs "github.com/p4tin/goaws/app/gosqs"
+	"github.com/Tweddle-SE-Team/goaws/backends"
+	"github.com/Tweddle-SE-Team/goaws/backends/common"
+	sqs "github.com/Tweddle-SE-Team/goaws/backends/gosqs"
 )
 
 type SnsErrorType struct {
@@ -79,15 +79,15 @@ func init() {
 func ListTopics(w http.ResponseWriter, req *http.Request) {
 	content := req.FormValue("ContentType")
 
-	respStruct := app.ListTopicsResponse{}
+	respStruct := backends.ListTopicsResponse{}
 	respStruct.Xmlns = "http://queue.amazonaws.com/doc/2012-11-05/"
 	uuid, _ := common.NewUUID()
-	respStruct.Metadata = app.ResponseMetadata{RequestId: uuid}
+	respStruct.Metadata = backends.ResponseMetadata{RequestId: uuid}
 
-	respStruct.Result.Topics.Member = make([]app.TopicArnResult, 0, 0)
+	respStruct.Result.Topics.Member = make([]backends.TopicArnResult, 0, 0)
 	log.Println("Listing Topics")
 	for _, topic := range SyncTopics.Topics {
-		ta := app.TopicArnResult{TopicArn: topic.Arn}
+		ta := backends.TopicArnResult{TopicArn: topic.Arn}
 		respStruct.Result.Topics.Member = append(respStruct.Result.Topics.Member, ta)
 	}
 
@@ -111,7 +111,7 @@ func CreateTopic(w http.ResponseWriter, req *http.Request) {
 		SyncTopics.RUnlock()
 	}
 	uuid, _ := common.NewUUID()
-	respStruct := app.CreateTopicResponse{"http://queue.amazonaws.com/doc/2012-11-05/", app.CreateTopicResult{TopicArn: topicArn}, app.ResponseMetadata{RequestId: uuid}}
+	respStruct := backends.CreateTopicResponse{"http://queue.amazonaws.com/doc/2012-11-05/", backends.CreateTopicResult{TopicArn: topicArn}, backends.ResponseMetadata{RequestId: uuid}}
 	SendResponseBack(w, req, respStruct, content)
 }
 
@@ -148,7 +148,7 @@ func Subscribe(w http.ResponseWriter, req *http.Request) {
 
 		//Create the response
 		uuid, _ := common.NewUUID()
-		respStruct := app.SubscribeResponse{"http://queue.amazonaws.com/doc/2012-11-05/", app.SubscribeResult{SubscriptionArn: subArn}, app.ResponseMetadata{RequestId: uuid}}
+		respStruct := backends.SubscribeResponse{"http://queue.amazonaws.com/doc/2012-11-05/", backends.SubscribeResult{SubscriptionArn: subArn}, backends.ResponseMetadata{RequestId: uuid}}
 		SendResponseBack(w, req, respStruct, content)
 	} else {
 		createErrorResponse(w, req, "TopicNotFound")
@@ -159,14 +159,14 @@ func ListSubscriptions(w http.ResponseWriter, req *http.Request) {
 	content := req.FormValue("ContentType")
 
 	uuid, _ := common.NewUUID()
-	respStruct := app.ListSubscriptionsResponse{}
+	respStruct := backends.ListSubscriptionsResponse{}
 	respStruct.Xmlns = "http://queue.amazonaws.com/doc/2012-11-05/"
 	respStruct.Metadata.RequestId = uuid
-	respStruct.Result.Subscriptions.Member = make([]app.TopicMemberResult, 0, 0)
+	respStruct.Result.Subscriptions.Member = make([]backends.TopicMemberResult, 0, 0)
 
 	for _, topic := range SyncTopics.Topics {
 		for _, sub := range topic.Subscriptions {
-			tar := app.TopicMemberResult{TopicArn: topic.Arn, Protocol: sub.Protocol,
+			tar := backends.TopicMemberResult{TopicArn: topic.Arn, Protocol: sub.Protocol,
 				SubscriptionArn: sub.SubscriptionArn, Endpoint: sub.EndPoint}
 			respStruct.Result.Subscriptions.Member = append(respStruct.Result.Subscriptions.Member, tar)
 		}
@@ -184,13 +184,13 @@ func ListSubscriptionsByTopic(w http.ResponseWriter, req *http.Request) {
 
 	if topic, ok := SyncTopics.Topics[topicName]; ok {
 		uuid, _ := common.NewUUID()
-		respStruct := app.ListSubscriptionsByTopicResponse{}
+		respStruct := backends.ListSubscriptionsByTopicResponse{}
 		respStruct.Xmlns = "http://queue.amazonaws.com/doc/2012-11-05/"
 		respStruct.Metadata.RequestId = uuid
-		respStruct.Result.Subscriptions.Member = make([]app.TopicMemberResult, 0, 0)
+		respStruct.Result.Subscriptions.Member = make([]backends.TopicMemberResult, 0, 0)
 
 		for _, sub := range topic.Subscriptions {
-			tar := app.TopicMemberResult{TopicArn: topic.Arn, Protocol: sub.Protocol,
+			tar := backends.TopicMemberResult{TopicArn: topic.Arn, Protocol: sub.Protocol,
 				SubscriptionArn: sub.SubscriptionArn, Endpoint: sub.EndPoint}
 			respStruct.Result.Subscriptions.Member = append(respStruct.Result.Subscriptions.Member, tar)
 		}
@@ -219,7 +219,7 @@ func SetSubscriptionAttributes(w http.ResponseWriter, req *http.Request) {
 					SyncTopics.Unlock()
 					//Good Response == return
 					uuid, _ := common.NewUUID()
-					respStruct := app.SetSubscriptionAttributesResponse{"http://queue.amazonaws.com/doc/2012-11-05/", app.ResponseMetadata{RequestId: uuid}}
+					respStruct := backends.SetSubscriptionAttributesResponse{"http://queue.amazonaws.com/doc/2012-11-05/", backends.ResponseMetadata{RequestId: uuid}}
 					SendResponseBack(w, req, respStruct, content)
 					return
 				}
@@ -246,7 +246,7 @@ func Unsubscribe(w http.ResponseWriter, req *http.Request) {
 				SyncTopics.Unlock()
 
 				uuid, _ := common.NewUUID()
-				respStruct := app.UnsubscribeResponse{"http://queue.amazonaws.com/doc/2012-11-05/", app.ResponseMetadata{RequestId: uuid}}
+				respStruct := backends.UnsubscribeResponse{"http://queue.amazonaws.com/doc/2012-11-05/", backends.ResponseMetadata{RequestId: uuid}}
 				SendResponseBack(w, req, respStruct, content)
 				return
 			}
@@ -270,7 +270,7 @@ func DeleteTopic(w http.ResponseWriter, req *http.Request) {
 		delete(SyncTopics.Topics, topicName)
 		SyncTopics.Unlock()
 		uuid, _ := common.NewUUID()
-		respStruct := app.DeleteTopicResponse{"http://queue.amazonaws.com/doc/2012-11-05/", app.ResponseMetadata{RequestId: uuid}}
+		respStruct := backends.DeleteTopicResponse{"http://queue.amazonaws.com/doc/2012-11-05/", backends.ResponseMetadata{RequestId: uuid}}
 		SendResponseBack(w, req, respStruct, content)
 	} else {
 		createErrorResponse(w, req, "TopicNotFound")
@@ -285,6 +285,7 @@ func Publish(w http.ResponseWriter, req *http.Request) {
 	subject := req.FormValue("Subject")
 	messageBody := req.FormValue("Message")
 	messageStructure := req.FormValue("MessageStructure")
+	messageAttributes := req.FormValue("MessageAttributes")
 
 	uriSegments := strings.Split(topicArn, ":")
 	topicName := uriSegments[len(uriSegments)-1]
@@ -292,6 +293,7 @@ func Publish(w http.ResponseWriter, req *http.Request) {
 	_, ok := SyncTopics.Topics[topicName]
 	if ok {
 		log.Println("Publish to Topic:", topicName)
+		log.Println("Publish a message: shit")
 		for _, subs := range SyncTopics.Topics[topicName].Subscriptions {
 			if Protocol(subs.Protocol) == ProtocolSQS {
 				queueUrl := subs.EndPoint
@@ -302,7 +304,6 @@ func Publish(w http.ResponseWriter, req *http.Request) {
 					if len(parts) > 0 {
 						queueName = parts[len(parts)-1]
 					}
-
 					msg := sqs.Message{}
 					if subs.Raw == false {
 						m, err := CreateMessageBody(messageBody, subject, topicArn, subs.Protocol, messageStructure)
@@ -310,12 +311,11 @@ func Publish(w http.ResponseWriter, req *http.Request) {
 							createErrorResponse(w, req, err.Error())
 							return
 						}
-
 						msg.MessageBody = m
 					} else {
 						msg.MessageBody = []byte(messageBody)
 					}
-					msg.MD5OfMessageAttributes = common.GetMD5Hash("GoAws")
+					msg.MD5OfMessageAttributes = common.GetMD5Hash(messageAttributes)
 					msg.MD5OfMessageBody = common.GetMD5Hash(messageBody)
 					msg.Uuid, _ = common.NewUUID()
 					sqs.SyncQueues.Lock()
@@ -335,7 +335,7 @@ func Publish(w http.ResponseWriter, req *http.Request) {
 	//Create the response
 	msgId, _ := common.NewUUID()
 	uuid, _ := common.NewUUID()
-	respStruct := app.PublishResponse{"http://queue.amazonaws.com/doc/2012-11-05/", app.PublishResult{MessageId: msgId}, app.ResponseMetadata{RequestId: uuid}}
+	respStruct := backends.PublishResponse{"http://queue.amazonaws.com/doc/2012-11-05/", backends.PublishResult{MessageId: msgId}, backends.ResponseMetadata{RequestId: uuid}}
 	SendResponseBack(w, req, respStruct, content)
 }
 
@@ -394,7 +394,7 @@ func extractMessageFromJSON(msg string, protocol string) (string, error) {
 
 func createErrorResponse(w http.ResponseWriter, req *http.Request, err string) {
 	er := SnsErrors[err]
-	respStruct := app.ErrorResponse{app.ErrorResult{Type: er.Type, Code: er.Code, Message: er.Message, RequestId: "00000000-0000-0000-0000-000000000000"}}
+	respStruct := backends.ErrorResponse{backends.ErrorResult{Type: er.Type, Code: er.Code, Message: er.Message, RequestId: "00000000-0000-0000-0000-000000000000"}}
 
 	w.WriteHeader(er.HttpError)
 	enc := xml.NewEncoder(w)

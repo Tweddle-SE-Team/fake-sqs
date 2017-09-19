@@ -1,4 +1,4 @@
-package app
+package backends
 
 /*** Common ***/
 type ResponseMetadata struct {
