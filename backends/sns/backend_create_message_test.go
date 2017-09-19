@@ -2,8 +2,8 @@ package sns
 
 import (
 	"encoding/json"
-	"testing"
 	"github.com/Tweddle-SE-Team/goaws/backends/common"
+	"testing"
 )
 
 const (
