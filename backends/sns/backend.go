@@ -292,7 +292,7 @@ func Publish(w http.ResponseWriter, req *http.Request) {
 	_, ok := SyncTopics.Topics[topicName]
 	if ok {
 		log.Println("Publish to Topic:", topicName)
-		log.Println("Publish a message: shit")
+		log.Println("Publish a message:", messageAttributes)
 		for _, subs := range SyncTopics.Topics[topicName].Subscriptions {
 			if Protocol(subs.Protocol) == ProtocolSQS {
 				queueUrl := subs.EndPoint
@@ -314,7 +314,7 @@ func Publish(w http.ResponseWriter, req *http.Request) {
 					} else {
 						msg.MessageBody = []byte(messageBody)
 					}
-					msg.MD5OfMessageAttributes = common.GetMD5Hash(messageAttributes)
+					msg.MD5OfMessageAttributes = common.GetMD5Hash("goaws")
 					msg.MD5OfMessageBody = common.GetMD5Hash(messageBody)
 					msg.Uuid, _ = common.NewUUID()
 					sqs.SyncQueues.Lock()

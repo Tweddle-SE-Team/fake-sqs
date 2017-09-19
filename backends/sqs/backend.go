@@ -12,8 +12,8 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/gorilla/mux"
 	"github.com/Tweddle-SE-Team/goaws/backends/common"
+	"github.com/gorilla/mux"
 )
 
 type SqsErrorType struct {
@@ -27,6 +27,7 @@ var SqsErrors map[string]SqsErrorType
 
 type Message struct {
 	MessageBody            []byte
+	MessageAttributes      []byte
 	Uuid                   string
 	MD5OfMessageAttributes string
 	MD5OfMessageBody       string
@@ -235,10 +236,10 @@ func numberOfHiddenMessagesInQueue(queue Queue) int {
 }
 
 type DeleteEntry struct {
-	Id string
+	Id            string
 	ReceiptHandle string
-	Error string
-	Deleted bool
+	Error         string
+	Deleted       bool
 }
 
 func DeleteMessageBatch(w http.ResponseWriter, req *http.Request) {
@@ -305,9 +306,9 @@ func DeleteMessageBatch(w http.ResponseWriter, req *http.Request) {
 	for _, deleteEntry := range deleteEntries {
 		if deleteEntry.Deleted == false {
 			notFoundEntries = append(notFoundEntries, BatchResultErrorEntry{
-				Code: "1",
-				Id: deleteEntry.Id,
-				Message: "Message not found",
+				Code:        "1",
+				Id:          deleteEntry.Id,
+				Message:     "Message not found",
 				SenderFault: true})
 		}
 	}

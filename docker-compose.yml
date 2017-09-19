@@ -1,7 +1,7 @@
 version: '2.1'
 services:
   notification:
-    image: techdoc/fake-sqs:latest
+    image: tweddle/fake-sqs:latest
     build:
       context: .
     ports:

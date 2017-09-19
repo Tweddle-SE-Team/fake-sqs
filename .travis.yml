@@ -5,4 +5,3 @@ go_import_path: github.com/p4tin/goaws
 go:
   - 1.7
   - tip
-  

@@ -1,11 +1,11 @@
 package sqs
 
 import (
-	"fmt"
 	"crypto/md5"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
+	"fmt"
 	"hash"
 	"net/http"
 	"sort"
@@ -15,7 +15,7 @@ import (
 
 type MessageAttributeValue struct {
 	dataType string
-	value string
+	value    string
 	valueKey string
 }
 
