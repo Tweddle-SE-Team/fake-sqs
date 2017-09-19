@@ -4,6 +4,27 @@ import (
 	"github.com/Tweddle-SE-Team/goaws/backends/common"
 )
 
+type SnsErrorType struct {
+	HttpError int
+	Type      string
+	Code      string
+	Message   string
+}
+
+type Subscription struct {
+	TopicArn        string
+	Protocol        string
+	SubscriptionArn string
+	EndPoint        string
+	Raw             bool
+}
+
+type Topic struct {
+	Name          string
+	Arn           string
+	Subscriptions []*Subscription
+}
+
 /*** List Topics Response */
 type TopicArnResult struct {
 	TopicArn string `xml:"TopicArn"`

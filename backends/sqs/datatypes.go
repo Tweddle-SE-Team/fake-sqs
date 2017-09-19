@@ -2,7 +2,33 @@ package sqs
 
 import (
 	"github.com/Tweddle-SE-Team/goaws/backends/common"
+	"time"
 )
+
+type SqsErrorType struct {
+	HttpError int
+	Type      string
+	Code      string
+	Message   string
+}
+
+type Message struct {
+	MessageBody            []byte
+	MessageAttributes      []common.MessageAttribute
+	Uuid                   string
+	MD5OfMessageAttributes string
+	MD5OfMessageBody       string
+	ReceiptHandle          string
+	ReceiptTime            time.Time
+}
+
+type Queue struct {
+	Name        string
+	URL         string
+	Arn         string
+	TimeoutSecs int
+	Messages    []Message
+}
 
 /*** List Queues Response */
 type ListQueuesResult struct {
@@ -43,12 +69,12 @@ type SendMessageResponse struct {
 /*** Receive Message Response */
 
 type ResultMessage struct {
-	MessageId              string             `xml:"MessageId,omitempty"`
-	ReceiptHandle          string             `xml:"ReceiptHandle,omitempty"`
-	MD5OfBody              string             `xml:"MD5OfBody,omitempty"`
-	Body                   []byte             `xml:"Body,omitempty"`
-	MessageAttributes      []MessageAttribute `xml:"MessageAttribute,omitempty"`
-	MD5OfMessageAttributes string             `xml:"MD5OfMessageAttributes,omitempty"`
+	MessageId              string                    `xml:"MessageId,omitempty"`
+	ReceiptHandle          string                    `xml:"ReceiptHandle,omitempty"`
+	MD5OfBody              string                    `xml:"MD5OfBody,omitempty"`
+	Body                   []byte                    `xml:"Body,omitempty"`
+	MessageAttributes      []common.MessageAttribute `xml:"MessageAttribute,omitempty"`
+	MD5OfMessageAttributes string                    `xml:"MD5OfMessageAttributes,omitempty"`
 }
 
 type ReceiveMessageResult struct {
@@ -128,22 +154,4 @@ type GetQueueAttributesResponse struct {
 type SetQueueAttributesResponse struct {
 	Xmlns    string                  `xml:"xmlns,attr,omitempty"`
 	Metadata common.ResponseMetadata `xml:"ResponseMetadata,omitempty"`
-}
-
-/*** Get Message Attributes ***/
-type MessageAttribute struct {
-	Name  string                `xml:"Name,omitempty"`
-	Value MessageAttributeValue `xml:"Value,omitempty"`
-}
-
-type MessageAttributeValue struct {
-	StringValue     string `xml:"StringValue,omitempty"`
-	BinaryValue     string `xml:"BinaryValue,omitempty"`
-	BinaryListValue string `xml:"BinaryListValue,omitempty"`
-	StringListValue string `xml:"StringListValue,omitempty"`
-	DataType        string `xml:"DataType,omitempty"`
-}
-
-type GetMessageAttributesResult struct {
-	MessageAttrs map[string]MessageAttribute `xml:"MessageAttribute,omitempty"`
 }

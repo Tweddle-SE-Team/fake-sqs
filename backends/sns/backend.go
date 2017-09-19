@@ -16,33 +16,12 @@ import (
 	"github.com/Tweddle-SE-Team/goaws/backends/sqs"
 )
 
-type SnsErrorType struct {
-	HttpError int
-	Type      string
-	Code      string
-	Message   string
-}
-
-var SnsErrors map[string]SnsErrorType
-
-type Subscription struct {
-	TopicArn        string
-	Protocol        string
-	SubscriptionArn string
-	EndPoint        string
-	Raw             bool
-}
-
-type Topic struct {
-	Name          string
-	Arn           string
-	Subscriptions []*Subscription
-}
-
 type (
 	Protocol         string
 	MessageStructure string
 )
+
+var SnsErrors map[string]SnsErrorType
 
 const (
 	ProtocolSQS     Protocol = "sqs"

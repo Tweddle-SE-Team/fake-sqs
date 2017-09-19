@@ -16,32 +16,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-type SqsErrorType struct {
-	HttpError int
-	Type      string
-	Code      string
-	Message   string
-}
-
 var SqsErrors map[string]SqsErrorType
-
-type Message struct {
-	MessageBody            []byte
-	MessageAttributes      []MessageAttribute
-	Uuid                   string
-	MD5OfMessageAttributes string
-	MD5OfMessageBody       string
-	ReceiptHandle          string
-	ReceiptTime            time.Time
-}
-
-type Queue struct {
-	Name        string
-	URL         string
-	Arn         string
-	TimeoutSecs int
-	Messages    []Message
-}
 
 var SyncQueues = struct {
 	sync.RWMutex
@@ -108,7 +83,7 @@ func CreateQueue(w http.ResponseWriter, req *http.Request) {
 func SendMessage(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/xml")
 	messageBody := req.FormValue("MessageBody")
-	messageAttributes := extractMessageAttributes(req)
+	messageAttributes := common.ExtractMessageAttributes(req)
 	log.Printf("message attributes %v", messageAttributes)
 
 	queueUrl := getQueueFromPath(req.FormValue("QueueUrl"), req.URL.String())
@@ -129,13 +104,13 @@ func SendMessage(w http.ResponseWriter, req *http.Request) {
 	}
 
 	log.Println("Putting Message in Queue:", queueName)
-	var messageAttrs []MessageAttribute
+	var messageAttrs []common.MessageAttribute
 	for k := range messageAttributes {
 		messageAttrs = append(messageAttrs, messageAttributes[k])
 	}
 	msg := Message{MessageBody: []byte(messageBody), MessageAttributes: messageAttrs}
 	msg.MD5OfMessageBody = common.GetMD5Hash(messageBody)
-	msg.MD5OfMessageAttributes = hashAttributes(messageAttributes)
+	msg.MD5OfMessageAttributes = common.HashAttributes(messageAttributes)
 	msg.Uuid, _ = common.NewUUID()
 	SyncQueues.Lock()
 	SyncQueues.Queues[queueName].Messages = append(SyncQueues.Queues[queueName].Messages, msg)

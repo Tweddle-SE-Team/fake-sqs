@@ -16,3 +16,21 @@ type ErrorResult struct {
 type ErrorResponse struct {
 	Result ErrorResult `xml:"Error"`
 }
+
+/*** Get Message Attributes ***/
+type MessageAttribute struct {
+	Name  string                `xml:"Name,omitempty"`
+	Value MessageAttributeValue `xml:"Value,omitempty"`
+}
+
+type MessageAttributeValue struct {
+	StringValue     string `xml:"StringValue,omitempty"`
+	BinaryValue     string `xml:"BinaryValue,omitempty"`
+	BinaryListValue string `xml:"BinaryListValue,omitempty"`
+	StringListValue string `xml:"StringListValue,omitempty"`
+	DataType        string `xml:"DataType,omitempty"`
+}
+
+type GetMessageAttributesResult struct {
+	MessageAttrs map[string]MessageAttribute `xml:"MessageAttribute,omitempty"`
+}
