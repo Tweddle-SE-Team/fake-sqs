@@ -108,6 +108,16 @@ type ListSubscriptionsByTopicResponse struct {
 	Metadata common.ResponseMetadata `xml:"ResponseMetadata"`
 }
 
+type TopicMessage struct {
+	Type              string
+	MessageId         string
+	TopicArn          string
+	Subject           string
+	Message           string
+	TimeStamp         string
+	MessageAttributes map[string]common.MessageAttribute `json:"MessageAttributes,omitempty"`
+}
+
 /*** Publish ***/
 
 type PublishResult struct {

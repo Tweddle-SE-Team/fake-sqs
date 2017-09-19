@@ -24,10 +24,10 @@ type MessageAttribute struct {
 }
 
 type MessageAttributeValue struct {
-	StringValue     string `xml:"StringValue,omitempty"`
-	BinaryValue     string `xml:"BinaryValue,omitempty"`
-	BinaryListValue string `xml:"BinaryListValue,omitempty"`
-	StringListValue string `xml:"StringListValue,omitempty"`
+	StringValue     string `xml:"StringValue,omitempty" json:"StringValue,omitempty"`
+	BinaryValue     string `xml:"BinaryValue,omitempty" json:"BinaryValue,omitempty"`
+	BinaryListValue string `xml:"BinaryListValue,omitempty" json:"BinaryListValue,omitempty"`
+	StringListValue string `xml:"StringListValue,omitempty" json:"StringListValue,omitempty"`
 	DataType        string `xml:"DataType,omitempty"`
 }
 

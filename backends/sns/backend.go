@@ -263,7 +263,7 @@ func Publish(w http.ResponseWriter, req *http.Request) {
 	subject := req.FormValue("Subject")
 	messageBody := req.FormValue("Message")
 	messageStructure := req.FormValue("MessageStructure")
-	messageAttributes := req.FormValue("MessageAttributes")
+	messageAttributes := common.ExtractMessageAttributes(req, "sns")
 
 	uriSegments := strings.Split(topicArn, ":")
 	topicName := uriSegments[len(uriSegments)-1]
@@ -271,7 +271,6 @@ func Publish(w http.ResponseWriter, req *http.Request) {
 	_, ok := SyncTopics.Topics[topicName]
 	if ok {
 		log.Println("Publish to Topic:", topicName)
-		log.Println("Publish a message:", messageAttributes)
 		for _, subs := range SyncTopics.Topics[topicName].Subscriptions {
 			if Protocol(subs.Protocol) == ProtocolSQS {
 				queueUrl := subs.EndPoint
@@ -284,13 +283,16 @@ func Publish(w http.ResponseWriter, req *http.Request) {
 					}
 					msg := sqs.Message{}
 					if subs.Raw == false {
-						m, err := CreateMessageBody(messageBody, subject, topicArn, subs.Protocol, messageStructure)
+						m, err := CreateMessageBody(messageBody, subject, topicArn, subs.Protocol, messageStructure, messageAttributes)
 						if err != nil {
 							createErrorResponse(w, req, err.Error())
 							return
 						}
 						msg.MessageBody = m
 					} else {
+						for k := range messageAttributes {
+							msg.MessageAttributes = append(msg.MessageAttributes, messageAttributes[k])
+						}
 						msg.MessageBody = []byte(messageBody)
 					}
 					msg.MD5OfMessageAttributes = common.GetMD5Hash("goaws")
@@ -317,21 +319,13 @@ func Publish(w http.ResponseWriter, req *http.Request) {
 	SendResponseBack(w, req, respStruct, content)
 }
 
-type TopicMessage struct {
-	Type      string
-	MessageId string
-	TopicArn  string
-	Subject   string
-	Message   string
-	TimeStamp string
-}
-
-func CreateMessageBody(msg string, subject string, topicArn string, protocol string, messageStructure string) ([]byte, error) {
+func CreateMessageBody(msg string, subject string, topicArn string, protocol string, messageStructure string, messageAttributes map[string]common.MessageAttribute) ([]byte, error) {
 	msgId, _ := common.NewUUID()
 
 	message := TopicMessage{}
 	message.Type = "Notification"
 	message.Subject = subject
+	message.MessageAttributes = messageAttributes
 
 	if MessageStructure(messageStructure) == MessageStructureJSON {
 		m, err := extractMessageFromJSON(msg, protocol)

@@ -83,7 +83,7 @@ func CreateQueue(w http.ResponseWriter, req *http.Request) {
 func SendMessage(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/xml")
 	messageBody := req.FormValue("MessageBody")
-	messageAttributes := common.ExtractMessageAttributes(req)
+	messageAttributes := common.ExtractMessageAttributes(req, "sqs")
 	log.Printf("message attributes %v", messageAttributes)
 
 	queueUrl := getQueueFromPath(req.FormValue("QueueUrl"), req.URL.String())

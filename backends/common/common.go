@@ -52,16 +52,31 @@ func LogMessage(msg string) {
 	}
 }
 
-func ExtractMessageAttributes(req *http.Request) map[string]MessageAttribute {
+func ExtractMessageAttributes(req *http.Request, service string) map[string]MessageAttribute {
 	attributes := make(map[string]MessageAttribute)
 
 	for i := 1; true; i++ {
-		name := req.FormValue(fmt.Sprintf("MessageAttribute.%d.Name", i))
+		pattern := fmt.Sprintf("MessageAttribute.%d.Name", i)
+		if service == "sns" {
+			pattern = fmt.Sprintf("MessageAttributes.entry.%d.Name", i)
+		} else {
+			log.Warnf("Handler for %s service is undefined!\n", service)
+			break
+		}
+		name := req.FormValue(pattern)
 		if name == "" {
 			break
 		}
 
-		dataType := req.FormValue(fmt.Sprintf("MessageAttribute.%d.Value.DataType", i))
+		pattern = fmt.Sprintf("MessageAttribute.%d.Value.DataType", i)
+		if service == "sns" {
+			pattern = fmt.Sprintf("MessageAttributes.entry.%d.Value.DataType", i)
+		} else {
+			log.Warnf("Handler for %s service is undefined!\n", service)
+			break
+		}
+
+		dataType := req.FormValue(pattern)
 		if dataType == "" {
 			log.Warnf("DataType of MessageAttribute %s is missing, MD5 checksum will most probably be wrong!\n", name)
 			continue
@@ -69,7 +84,16 @@ func ExtractMessageAttributes(req *http.Request) map[string]MessageAttribute {
 
 		// StringListValue and BinaryListValue is currently not implemented
 		for _, valueKey := range [...]string{"StringValue", "BinaryValue"} {
-			value := req.FormValue(fmt.Sprintf("MessageAttribute.%d.Value.%s", i, valueKey))
+
+			pattern = fmt.Sprintf("MessageAttribute.%d.Value.%s", i, valueKey)
+			if service == "sns" {
+				pattern = fmt.Sprintf("MessageAttributes.entry.%d.Value.%s", i, valueKey)
+			} else {
+				log.Warnf("Handler for %s service is undefined!\n", service)
+				break
+			}
+
+			value := req.FormValue(pattern)
 			if value != "" {
 				messageAttributeValue := MessageAttributeValue{DataType: dataType}
 				if valueKey == "StringValue" {
