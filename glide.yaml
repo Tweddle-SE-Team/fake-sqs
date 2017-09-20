@@ -1,0 +1,13 @@
+package: github.com/Tweddle-SE-Team/goaws
+homepage: https://tweddle.com
+license: MIT
+owners:
+import:
+- package: github.com/aws/aws-sdk-go
+- package: github.com/stretchr/testify
+- package: github.com/sirupsen/logrus
+- package: github.com/gorilla/mux
+- package: github.com/ghodss/yaml
+- package: gopkg.in/yaml.v2
+- package: golang.org/x/crypto/ssh/terminal
+- package: golang.org/x/sys/unix
