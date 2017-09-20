@@ -1,11 +1,17 @@
 package sns
 
 import (
+	"crypto/md5"
+	"encoding/base64"
+	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"hash"
 	"net/http"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -263,7 +269,7 @@ func Publish(w http.ResponseWriter, req *http.Request) {
 	subject := req.FormValue("Subject")
 	messageBody := req.FormValue("Message")
 	messageStructure := req.FormValue("MessageStructure")
-	messageAttributes := common.ExtractMessageAttributes(req, "sns")
+	messageAttributes := extractSnsMessageAttributes(req)
 
 	uriSegments := strings.Split(topicArn, ":")
 	topicName := uriSegments[len(uriSegments)-1]
@@ -290,12 +296,14 @@ func Publish(w http.ResponseWriter, req *http.Request) {
 						}
 						msg.MessageBody = m
 					} else {
-						for k := range messageAttributes {
-							msg.MessageAttributes = append(msg.MessageAttributes, messageAttributes[k])
+						m, err := CreateMessageBody(messageBody, subject, topicArn, subs.Protocol, messageStructure, messageAttributes)
+						if err != nil {
+							createErrorResponse(w, req, err.Error())
+							return
 						}
-						msg.MessageBody = []byte(messageBody)
+						msg.MessageBody = m
 					}
-					msg.MD5OfMessageAttributes = common.GetMD5Hash("goaws")
+					msg.MD5OfMessageAttributes = hashAttributes(messageAttributes)
 					msg.MD5OfMessageBody = common.GetMD5Hash(messageBody)
 					msg.Uuid, _ = common.NewUUID()
 					sqs.SyncQueues.Lock()
@@ -319,7 +327,7 @@ func Publish(w http.ResponseWriter, req *http.Request) {
 	SendResponseBack(w, req, respStruct, content)
 }
 
-func CreateMessageBody(msg string, subject string, topicArn string, protocol string, messageStructure string, messageAttributes map[string]common.MessageAttribute) ([]byte, error) {
+func CreateMessageBody(msg string, subject string, topicArn string, protocol string, messageStructure string, messageAttributes map[string]SnsMessageAttribute) ([]byte, error) {
 	msgId, _ := common.NewUUID()
 
 	message := TopicMessage{}
@@ -395,4 +403,82 @@ func SendResponseBack(w http.ResponseWriter, req *http.Request, respStruct inter
 			log.Printf("error: %v\n", err)
 		}
 	}
+}
+
+func extractSnsMessageAttributes(req *http.Request) map[string]SnsMessageAttribute {
+	attributes := make(map[string]SnsMessageAttribute)
+
+	for i := 1; true; i++ {
+		name := req.FormValue(fmt.Sprintf("MessageAttributes.entry.%d.Name", i))
+		if name == "" {
+			break
+		}
+
+		dataType := req.FormValue(fmt.Sprintf("MessageAttributes.entry.%d.Value.DataType", i))
+		if dataType == "" {
+			log.Warnf("DataType of MessageAttribute %s is missing, MD5 checksum will most probably be wrong!\n", name)
+			continue
+		}
+
+		// StringListValue and BinaryListValue is currently not implemented
+		for _, valueKey := range [...]string{"StringValue", "BinaryValue"} {
+
+			value := req.FormValue(fmt.Sprintf("MessageAttributes.entry.%d.Value.%s", i, valueKey))
+			if value != "" {
+				attributes[name] = SnsMessageAttribute{Name: name, Value: value, Type: dataType}
+			}
+		}
+
+		if _, ok := attributes[name]; !ok {
+			log.Warnf("StringValue or BinaryValue of MessageAttribute %s is missing, MD5 checksum will most probably be wrong!\n", name)
+		}
+	}
+
+	return attributes
+}
+
+func hashAttributes(attributes map[string]SnsMessageAttribute) string {
+	hasher := md5.New()
+
+	keys := sortedKeys(attributes)
+	for _, key := range keys {
+		attributeValue := attributes[key]
+		addStringToHash(hasher, key)
+		addStringToHash(hasher, attributeValue.Type)
+		if attributeValue.Type == "String" {
+			hasher.Write([]byte{1})
+			addStringToHash(hasher, attributeValue.Value)
+		} else if attributeValue.Type == "Number" {
+			hasher.Write([]byte{2})
+			bytes, _ := base64.StdEncoding.DecodeString(attributeValue.Value)
+			addBytesToHash(hasher, bytes)
+		} else if attributeValue.Type == "Binary" {
+			hasher.Write([]byte{3})
+			bytes, _ := base64.StdEncoding.DecodeString(attributeValue.Value)
+			addBytesToHash(hasher, bytes)
+		}
+	}
+
+	return hex.EncodeToString(hasher.Sum(nil))
+}
+
+func sortedKeys(attributes map[string]SnsMessageAttribute) []string {
+	var keys []string
+	for key, _ := range attributes {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+func addStringToHash(hasher hash.Hash, str string) {
+	bytes := []byte(str)
+	addBytesToHash(hasher, bytes)
+}
+
+func addBytesToHash(hasher hash.Hash, arr []byte) {
+	bs := make([]byte, 4)
+	binary.BigEndian.PutUint32(bs, uint32(len(arr)))
+	hasher.Write(bs)
+	hasher.Write(arr)
 }

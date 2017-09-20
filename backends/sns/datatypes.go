@@ -109,13 +109,13 @@ type ListSubscriptionsByTopicResponse struct {
 }
 
 type TopicMessage struct {
-	Type              string
-	MessageId         string
-	TopicArn          string
-	Subject           string
-	Message           string
-	TimeStamp         string
-	MessageAttributes map[string]common.MessageAttribute `json:"MessageAttributes,omitempty"`
+	Type              string                         `json:"Type,omitempty"`
+	MessageId         string                         `json:"MessageId,omitempty"`
+	TopicArn          string                         `json:"TopicArn,omitempty"`
+	Subject           string                         `json:"Subject,omitempty"`
+	Message           string                         `json:"Message,omitempty"`
+	TimeStamp         string                         `json:"TimeStamp,omitempty"`
+	MessageAttributes map[string]SnsMessageAttribute `json:"MessageAttributes,omitempty"`
 }
 
 /*** Publish ***/
@@ -140,4 +140,15 @@ type UnsubscribeResponse struct {
 type DeleteTopicResponse struct {
 	Xmlns    string                  `xml:"xmlns,attr"`
 	Metadata common.ResponseMetadata `xml:"ResponseMetadata"`
+}
+
+/*** Get Message Attributes ***/
+type SnsMessageAttribute struct {
+	Name  string `xml:"Name,omitempty"`
+	Value string `xml:"Value,omitempty"`
+	Type  string `xml:"Type,omitempty"`
+}
+
+type GetSnsMessageAttributesResult struct {
+	MessageAttrs map[string]SnsMessageAttribute `xml:"MessageAttribute,omitempty"`
 }

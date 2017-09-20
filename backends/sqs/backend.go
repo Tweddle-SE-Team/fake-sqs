@@ -1,10 +1,16 @@
 package sqs
 
 import (
+	"crypto/md5"
+	"encoding/base64"
+	"encoding/binary"
+	"encoding/hex"
 	"encoding/xml"
 	"fmt"
+	"hash"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -83,7 +89,7 @@ func CreateQueue(w http.ResponseWriter, req *http.Request) {
 func SendMessage(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/xml")
 	messageBody := req.FormValue("MessageBody")
-	messageAttributes := common.ExtractMessageAttributes(req, "sqs")
+	messageAttributes := extractSqsMessageAttributes(req)
 
 	queueUrl := getQueueFromPath(req.FormValue("QueueUrl"), req.URL.String())
 
@@ -103,13 +109,13 @@ func SendMessage(w http.ResponseWriter, req *http.Request) {
 	}
 
 	log.Println("Putting Message in Queue:", queueName)
-	var messageAttrs []common.MessageAttribute
+	var messageAttrs []SqsMessageAttribute
 	for k := range messageAttributes {
 		messageAttrs = append(messageAttrs, messageAttributes[k])
 	}
 	msg := Message{MessageBody: []byte(messageBody), MessageAttributes: messageAttrs}
 	msg.MD5OfMessageBody = common.GetMD5Hash(messageBody)
-	msg.MD5OfMessageAttributes = common.HashAttributes(messageAttributes)
+	msg.MD5OfMessageAttributes = hashAttributes(messageAttributes)
 	log.Warnf("Message attributes: %#v", messageAttributes)
 	msg.Uuid, _ = common.NewUUID()
 	SyncQueues.Lock()
@@ -522,4 +528,84 @@ func createErrorResponse(w http.ResponseWriter, req *http.Request, err string) {
 	if err := enc.Encode(respStruct); err != nil {
 		log.Printf("error: %v\n", err)
 	}
+}
+
+func extractSqsMessageAttributes(req *http.Request) map[string]SqsMessageAttribute {
+	attributes := make(map[string]SqsMessageAttribute)
+
+	for i := 1; true; i++ {
+		name := req.FormValue(fmt.Sprintf("MessageAttribute.%d.Name", i))
+		if name == "" {
+			break
+		}
+
+		dataType := req.FormValue(fmt.Sprintf("MessageAttribute.%d.Value.DataType", i))
+		if dataType == "" {
+			log.Warnf("DataType of MessageAttribute %s is missing, MD5 checksum will most probably be wrong!\n", name)
+			continue
+		}
+
+		// StringListValue and BinaryListValue is currently not implemented
+		for _, valueKey := range [...]string{"StringValue", "BinaryValue"} {
+
+			value := req.FormValue(fmt.Sprintf("MessageAttribute.%d.Value.%s", i, valueKey))
+			if value != "" {
+				messageAttributeValue := SqsMessageAttributeValue{DataType: dataType}
+				if valueKey == "StringValue" {
+					messageAttributeValue.StringValue = value
+				} else if valueKey == "BinaryValue" {
+					messageAttributeValue.BinaryValue = value
+				}
+				attributes[name] = SqsMessageAttribute{Name: name, Value: messageAttributeValue}
+			}
+		}
+
+		if _, ok := attributes[name]; !ok {
+			log.Warnf("StringValue or BinaryValue of MessageAttribute %s is missing, MD5 checksum will most probably be wrong!\n", name)
+		}
+	}
+
+	return attributes
+}
+
+func hashAttributes(attributes map[string]SqsMessageAttribute) string {
+	hasher := md5.New()
+
+	keys := sortedKeys(attributes)
+	for _, key := range keys {
+		attributeValue := attributes[key]
+		addStringToHash(hasher, key)
+		addStringToHash(hasher, attributeValue.Value.DataType)
+		if attributeValue.Value.StringValue != "" {
+			hasher.Write([]byte{1})
+			addStringToHash(hasher, attributeValue.Value.StringValue)
+		} else if attributeValue.Value.BinaryValue != "" {
+			hasher.Write([]byte{2})
+			bytes, _ := base64.StdEncoding.DecodeString(attributeValue.Value.BinaryValue)
+			addBytesToHash(hasher, bytes)
+		}
+	}
+
+	return hex.EncodeToString(hasher.Sum(nil))
+}
+
+func sortedKeys(attributes map[string]SqsMessageAttribute) []string {
+	var keys []string
+	for key, _ := range attributes {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+func addStringToHash(hasher hash.Hash, str string) {
+	bytes := []byte(str)
+	addBytesToHash(hasher, bytes)
+}
+
+func addBytesToHash(hasher hash.Hash, arr []byte) {
+	bs := make([]byte, 4)
+	binary.BigEndian.PutUint32(bs, uint32(len(arr)))
+	hasher.Write(bs)
+	hasher.Write(arr)
 }

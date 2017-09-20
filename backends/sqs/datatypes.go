@@ -14,7 +14,7 @@ type SqsErrorType struct {
 
 type Message struct {
 	MessageBody            []byte
-	MessageAttributes      []common.MessageAttribute
+	MessageAttributes      []SqsMessageAttribute
 	Uuid                   string
 	MD5OfMessageAttributes string
 	MD5OfMessageBody       string
@@ -69,12 +69,12 @@ type SendMessageResponse struct {
 /*** Receive Message Response */
 
 type ResultMessage struct {
-	MessageId              string                    `xml:"MessageId,omitempty"`
-	ReceiptHandle          string                    `xml:"ReceiptHandle,omitempty"`
-	MD5OfBody              string                    `xml:"MD5OfBody,omitempty"`
-	Body                   []byte                    `xml:"Body,omitempty"`
-	MessageAttributes      []common.MessageAttribute `xml:"MessageAttribute,omitempty"`
-	MD5OfMessageAttributes string                    `xml:"MD5OfMessageAttributes,omitempty"`
+	MessageId              string                `xml:"MessageId,omitempty"`
+	ReceiptHandle          string                `xml:"ReceiptHandle,omitempty"`
+	MD5OfBody              string                `xml:"MD5OfBody,omitempty"`
+	Body                   []byte                `xml:"Body,omitempty"`
+	MessageAttributes      []SqsMessageAttribute `xml:"MessageAttribute,omitempty"`
+	MD5OfMessageAttributes string                `xml:"MD5OfMessageAttributes,omitempty"`
 }
 
 type ReceiveMessageResult struct {
@@ -154,4 +154,22 @@ type GetQueueAttributesResponse struct {
 type SetQueueAttributesResponse struct {
 	Xmlns    string                  `xml:"xmlns,attr,omitempty"`
 	Metadata common.ResponseMetadata `xml:"ResponseMetadata,omitempty"`
+}
+
+/*** Get Message Attributes ***/
+type SqsMessageAttribute struct {
+	Name  string                   `xml:"Name,omitempty"`
+	Value SqsMessageAttributeValue `xml:"Value,omitempty"`
+}
+
+type SqsMessageAttributeValue struct {
+	StringValue     string `xml:"StringValue,omitempty" json:"StringValue,omitempty"`
+	BinaryValue     string `xml:"BinaryValue,omitempty" json:"BinaryValue,omitempty"`
+	BinaryListValue string `xml:"BinaryListValue,omitempty" json:"BinaryListValue,omitempty"`
+	StringListValue string `xml:"StringListValue,omitempty" json:"StringListValue,omitempty"`
+	DataType        string `xml:"DataType,omitempty"`
+}
+
+type GetSqsMessageAttributesResult struct {
+	MessageAttrs map[string]SqsMessageAttribute `xml:"MessageAttribute,omitempty"`
 }

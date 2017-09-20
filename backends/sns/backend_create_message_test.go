@@ -2,7 +2,6 @@ package sns
 
 import (
 	"encoding/json"
-	"github.com/Tweddle-SE-Team/goaws/backends/common"
 	"testing"
 )
 
@@ -19,7 +18,7 @@ func TestCreateMessageBody_NonJson(t *testing.T) {
 	message := "message text"
 	subject := "subject"
 	protocol := "sqs"
-	messageAttributes := make(map[string]common.MessageAttribute)
+	messageAttributes := make(map[string]SnsMessageAttribute)
 
 	snsMessage, err := CreateMessageBody(message, subject, testArn, protocol, "", messageAttributes)
 	if err != nil {
@@ -57,7 +56,7 @@ func TestCreateMessageBody_OnlyDefaultValueInJson(t *testing.T) {
 	message := `{"default": "default message text", "http": "HTTP message text"}`
 	subject := "subject"
 	protocol := "sqs"
-	messageAttributes := make(map[string]common.MessageAttribute)
+	messageAttributes := make(map[string]SnsMessageAttribute)
 
 	snsMessage, err := CreateMessageBody(message, subject, testArn, protocol, messageStructureJSON, messageAttributes)
 	if err != nil {
@@ -96,7 +95,7 @@ func TestCreateMessageBody_OnlySqsValueInJson(t *testing.T) {
 	message := `{"sqs": "message text"}`
 	subject := "subject"
 	protocol := "sqs"
-	messageAttributes := make(map[string]common.MessageAttribute)
+	messageAttributes := make(map[string]SnsMessageAttribute)
 
 	snsMessage, err := CreateMessageBody(message, subject, testArn, protocol, messageStructureJSON, messageAttributes)
 	if err == nil {
@@ -110,7 +109,7 @@ func TestCreateMessageBody_BothDefaultAndSqsValuesInJson(t *testing.T) {
 	message := `{"default": "default message text", "sqs": "sqs message text"}`
 	subject := "subject"
 	protocol := "sqs"
-	messageAttributes := make(map[string]common.MessageAttribute)
+	messageAttributes := make(map[string]SnsMessageAttribute)
 
 	snsMessage, err := CreateMessageBody(message, subject, testArn, protocol, messageStructureJSON, messageAttributes)
 	if err != nil {
@@ -149,7 +148,7 @@ func TestCreateMessageBody_NonJsonContainingJson(t *testing.T) {
 	message := `{"default": "default message text", "sqs": "sqs message text"}`
 	subject := "subject"
 	protocol := "sqs"
-	messageAttributes := make(map[string]common.MessageAttribute)
+	messageAttributes := make(map[string]SnsMessageAttribute)
 
 	snsMessage, err := CreateMessageBody(message, subject, testArn, protocol, "", messageAttributes)
 	if err != nil {
