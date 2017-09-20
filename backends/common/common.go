@@ -59,9 +59,6 @@ func ExtractMessageAttributes(req *http.Request, service string) map[string]Mess
 		pattern := fmt.Sprintf("MessageAttribute.%d.Name", i)
 		if service == "sns" {
 			pattern = fmt.Sprintf("MessageAttributes.entry.%d.Name", i)
-		} else {
-			log.Warnf("Handler for %s service is undefined!\n", service)
-			break
 		}
 		name := req.FormValue(pattern)
 		if name == "" {
@@ -71,9 +68,6 @@ func ExtractMessageAttributes(req *http.Request, service string) map[string]Mess
 		pattern = fmt.Sprintf("MessageAttribute.%d.Value.DataType", i)
 		if service == "sns" {
 			pattern = fmt.Sprintf("MessageAttributes.entry.%d.Value.DataType", i)
-		} else {
-			log.Warnf("Handler for %s service is undefined!\n", service)
-			break
 		}
 
 		dataType := req.FormValue(pattern)
@@ -88,9 +82,6 @@ func ExtractMessageAttributes(req *http.Request, service string) map[string]Mess
 			pattern = fmt.Sprintf("MessageAttribute.%d.Value.%s", i, valueKey)
 			if service == "sns" {
 				pattern = fmt.Sprintf("MessageAttributes.entry.%d.Value.%s", i, valueKey)
-			} else {
-				log.Warnf("Handler for %s service is undefined!\n", service)
-				break
 			}
 
 			value := req.FormValue(pattern)

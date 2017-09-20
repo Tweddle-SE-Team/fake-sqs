@@ -84,7 +84,6 @@ func SendMessage(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/xml")
 	messageBody := req.FormValue("MessageBody")
 	messageAttributes := common.ExtractMessageAttributes(req, "sqs")
-	log.Printf("message attributes %v", messageAttributes)
 
 	queueUrl := getQueueFromPath(req.FormValue("QueueUrl"), req.URL.String())
 
@@ -111,6 +110,7 @@ func SendMessage(w http.ResponseWriter, req *http.Request) {
 	msg := Message{MessageBody: []byte(messageBody), MessageAttributes: messageAttrs}
 	msg.MD5OfMessageBody = common.GetMD5Hash(messageBody)
 	msg.MD5OfMessageAttributes = common.HashAttributes(messageAttributes)
+	log.Warnf("Message attributes: %#v", messageAttributes)
 	msg.Uuid, _ = common.NewUUID()
 	SyncQueues.Lock()
 	SyncQueues.Queues[queueName].Messages = append(SyncQueues.Queues[queueName].Messages, msg)
@@ -185,9 +185,11 @@ func ReceiveMessage(w http.ResponseWriter, req *http.Request) {
 				for k := range SyncQueues.Queues[queueName].Messages[i].MessageAttributes {
 					message[numMsg].MessageAttributes = append(message[numMsg].MessageAttributes, SyncQueues.Queues[queueName].Messages[i].MessageAttributes[k])
 				}
+				log.Printf("message attributes %v", message[numMsg].MessageAttributes)
 				message[numMsg].Body = SyncQueues.Queues[queueName].Messages[i].MessageBody
 				message[numMsg].ReceiptHandle = SyncQueues.Queues[queueName].Messages[i].ReceiptHandle
 				message[numMsg].MD5OfBody = common.GetMD5Hash(string(message[numMsg].Body))
+				message[numMsg].MD5OfMessageAttributes = SyncQueues.Queues[queueName].Messages[i].MD5OfMessageAttributes
 				SyncQueues.Unlock() // Unlock the Queues
 				numMsg++
 			}
