@@ -10,8 +10,8 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/Tweddle-SE-Team/goaws/backends/router"
 	"github.com/Tweddle-SE-Team/goaws/config"
+	"github.com/Tweddle-SE-Team/goaws/services/router"
 )
 
 func main() {

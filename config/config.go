@@ -6,9 +6,9 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/Tweddle-SE-Team/goaws/backends/common"
-	"github.com/Tweddle-SE-Team/goaws/backends/sns"
-	"github.com/Tweddle-SE-Team/goaws/backends/sqs"
+	"github.com/Tweddle-SE-Team/goaws/services/common"
+	"github.com/Tweddle-SE-Team/goaws/services/sns"
+	"github.com/Tweddle-SE-Team/goaws/services/sqs"
 	"github.com/ghodss/yaml"
 )
 
@@ -61,11 +61,6 @@ func LoadYamlConfig(filename string, env string) []string {
 		env = "Local"
 	}
 
-	region := "local"
-	if envs[env].Region != "" {
-		region = envs[env].Region
-	}
-
 	if envs[env].Port != "" {
 		ports = []string{envs[env].Port}
 	} else if envs[env].SqsPort != "" && envs[env].SnsPort != "" {
@@ -81,39 +76,33 @@ func LoadYamlConfig(filename string, env string) []string {
 			common.LogFile = envs[env].LogFile
 		}
 	}
-
-	sqs.SyncQueues.Lock()
-	for _, queue := range envs[env].Queues {
-		queueUrl := "http://" + envs[env].Host + ":" + ports[0] + "/queue/" + queue.Name
-		sqs.SyncQueues.Queues[queue.Name] = &sqs.Queue{Name: queue.Name, TimeoutSecs: 30, Arn: queueUrl, URL: queueUrl}
+	queueHost := envs[env].Host + ":" + ports[0]
+	for _, queueEnv := range envs[env].Queues {
+		queue := sqs.NewQueue(queueEnv.Name, queueHost)
+		sqs.Service.Queues.Put(queue)
 	}
-	sqs.SyncQueues.Unlock()
-	sns.SyncTopics.Lock()
 	for _, topic := range envs[env].Topics {
-		topicArn := "arn:aws:sns:" + region + ":000000000000:" + topic.Name
-
-		newTopic := &sns.Topic{Name: topic.Name, Arn: topicArn}
-		newTopic.Subscriptions = make([]*sns.Subscription, 0, 0)
-
-		for _, subs := range topic.Subscriptions {
-			if _, ok := sqs.SyncQueues.Queues[subs.QueueName]; !ok {
-				//Queue does not exist yet, create it.
-				sqs.SyncQueues.Lock()
-				queueUrl := "http://" + envs[env].Host + ":" + ports[0] + "/queue/" + subs.QueueName
-				sqs.SyncQueues.Queues[subs.QueueName] = &sqs.Queue{Name: subs.QueueName, TimeoutSecs: 30, Arn: queueUrl, URL: queueUrl}
-				sqs.SyncQueues.Unlock()
-			}
-			qUrl := sqs.SyncQueues.Queues[subs.QueueName].URL
-			newSub := &sns.Subscription{EndPoint: qUrl, Protocol: "sqs", TopicArn: topicArn, Raw: subs.Raw}
-			subArn, _ := common.NewUUID()
-			subArn = topicArn + ":" + subArn
-			newSub.SubscriptionArn = subArn
-			newTopic.Subscriptions = append(newTopic.Subscriptions, newSub)
+		newTopic := sns.NewTopic(nil, &topic.Name)
+		queueEquals := func(s interface{}, v interface{}) bool {
+			src := s.(*sqs.Queue)
+			value := v.(*string)
+			return src.Name == *value
 		}
-		sns.SyncTopics.Topics[topic.Name] = newTopic
+		for _, subs := range topic.Subscriptions {
+			q := sqs.Service.Queues.Get(&subs.QueueName, queueEquals)
+			if q == nil {
+				queue := sqs.NewQueue(subs.QueueName, queueHost)
+				sqs.Service.Queues.Put(queue)
+				subscription := sns.NewSubscription(newTopic.Arn, "sqs", queue.URL, subs.Raw)
+				newTopic.Subscriptions.Put(subscription)
+			} else {
+				queue := q.(sqs.Queue)
+				subscription := sns.NewSubscription(newTopic.Arn, "sqs", queue.URL, subs.Raw)
+				newTopic.Subscriptions.Put(subscription)
+			}
+		}
+		sns.Service.Topics.Put(newTopic)
 	}
-	sns.SyncTopics.Unlock()
-
 	return ports
 }
 
